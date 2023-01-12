@@ -8,58 +8,58 @@
 #include <pcl/visualization/cloud_viewer.h>
 
 class EuclideanClustering{
-	private:
-		/*node handle*/
-		ros::NodeHandle nh;
-		ros::NodeHandle nhPrivate;
-		/*subscribe*/
-		ros::Subscriber sub_pc;
-		/*pcl objects*/
-		pcl::visualization::PCLVisualizer viewer {"Euclidian Clustering"};
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud {new pcl::PointCloud<pcl::PointXYZ>};
-		std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clusters;
-		/*parameters*/
-		double cluster_tolerance;
-		int min_cluster_size;
-	public:
-		EuclideanClustering();
-		void CallbackPC(const sensor_msgs::PointCloud2ConstPtr &msg);
-		void Clustering(void);
-		void Visualization(void);
+    private:
+        /*node handle*/
+        ros::NodeHandle nh;
+        ros::NodeHandle nhPrivate;
+        /*subscribe*/
+        ros::Subscriber sub_pc;
+        /*pcl objects*/
+        pcl::visualization::PCLVisualizer viewer {"Euclidian Clustering"};
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud {new pcl::PointCloud<pcl::PointXYZ>};
+        std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clusters;
+        /*parameters*/
+        double cluster_tolerance;
+        int min_cluster_size;
+    public:
+        EuclideanClustering();
+        void CallbackPC(const sensor_msgs::PointCloud2ConstPtr &msg);
+        void Clustering(void);
+        void Visualization(void);
 };
 
 EuclideanClustering::EuclideanClustering()
-	:nhPrivate("~")
+    :nhPrivate("~")
 {
-	sub_pc = nh.subscribe("/velodyne_obstacles", 1, &EuclideanClustering::CallbackPC, this);
-	viewer.setBackgroundColor(1, 1, 1);
-	viewer.addCoordinateSystem(1.0, "axis");
-	viewer.setCameraPosition(0.0, 0.0, 35.0, 0.0, 0.0, 0.0);
+    sub_pc = nh.subscribe("/velodyne_obstacles", 1, &EuclideanClustering::CallbackPC, this);
+    viewer.setBackgroundColor(1, 1, 1);
+    viewer.addCoordinateSystem(1.0, "axis");
+    viewer.setCameraPosition(0.0, 0.0, 35.0, 0.0, 0.0, 0.0);
 
-	nhPrivate.param("cluster_tolerance", cluster_tolerance, 1.0);
-	nhPrivate.param("min_cluster_size", min_cluster_size, 30);
-	std::cout << "cluster_tolerance = " << cluster_tolerance << std::endl;
-	std::cout << "min_cluster_size = " << min_cluster_size << std::endl;
+    nhPrivate.param("cluster_tolerance", cluster_tolerance, 1.0);
+    nhPrivate.param("min_cluster_size", min_cluster_size, 30);
+    std::cout << "cluster_tolerance = " << cluster_tolerance << std::endl;
+    std::cout << "min_cluster_size = " << min_cluster_size << std::endl;
 }
 
 void EuclideanClustering::CallbackPC(const sensor_msgs::PointCloud2ConstPtr &msg)
 {
-	/* std::cout << "CALLBACK PC" << std::endl; */
+    /* std::cout << "CALLBACK PC" << std::endl; */
 
-	pcl::fromROSMsg(*msg, *cloud);
-	std::cout << "==========" << std::endl;
-	std::cout << "cloud->points.size() = " << cloud->points.size() << std::endl;
+    pcl::fromROSMsg(*msg, *cloud);
+    std::cout << "==========" << std::endl;
+    std::cout << "cloud->points.size() = " << cloud->points.size() << std::endl;
 
-	clusters.clear();
-	Clustering();
-	Visualization();
+    clusters.clear();
+    Clustering();
+    Visualization();
 }
 
 void EuclideanClustering::Clustering(void)
 {
-	double time_start = ros::Time::now().toSec();
+    double time_start = ros::Time::now().toSec();
 
-	/*clustering*/
+    /*clustering*/
     /*kd-treeクラスを宣言*/
     pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
     /*探索する点群をinput*/
@@ -81,23 +81,22 @@ void EuclideanClustering::Clustering(void)
     /*クラスリング実行*/
     ece.extract(cluster_indices);
 
+    std::cout << "cluster_indices.size() = " << cluster_indices.size() << std::endl;
 
-	std::cout << "cluster_indices.size() = " << cluster_indices.size() << std::endl;
-
-	/*dividing（クラスタごとに点群を分割)*/
-	pcl::ExtractIndices<pcl::PointXYZ> ei;
-	ei.setInputCloud(cloud);
-	ei.setNegative(false);
-	for(size_t i=0;i<cluster_indices.size();i++){
-		/*extract*/
-		pcl::PointCloud<pcl::PointXYZ>::Ptr tmp_clustered_points (new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::PointIndices::Ptr tmp_clustered_indices (new pcl::PointIndices);
-		*tmp_clustered_indices = cluster_indices[i];
-		ei.setIndices(tmp_clustered_indices);
-		ei.filter(*tmp_clustered_points);
-		/*input*/
-		clusters.push_back(tmp_clustered_points);
-	}
+    /*dividing（クラスタごとに点群を分割)*/
+    pcl::ExtractIndices<pcl::PointXYZ> ei;
+    ei.setInputCloud(cloud);
+    ei.setNegative(false);
+    for(size_t i=0;i<cluster_indices.size();i++){
+        /*extract*/
+        pcl::PointCloud<pcl::PointXYZ>::Ptr tmp_clustered_points (new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointIndices::Ptr tmp_clustered_indices (new pcl::PointIndices);
+        *tmp_clustered_indices = cluster_indices[i];
+        ei.setIndices(tmp_clustered_indices);
+        ei.filter(*tmp_clustered_points);
+        /*input*/
+        clusters.push_back(tmp_clustered_points);
+    }
 
     int i = 0;
     for(auto it = cluster_indices.begin(); it != cluster_indices.end(); ++it){ // cluster size
@@ -123,46 +122,46 @@ void EuclideanClustering::Clustering(void)
         std::cout << "z_ave: "<< z_ave << std::endl;
     }
 
-	std::cout << "clustering time [s] = " << ros::Time::now().toSec() - time_start << std::endl;
+    std::cout << "clustering time [s] = " << ros::Time::now().toSec() - time_start << std::endl;
 }
 
 void EuclideanClustering::Visualization(void)
 {
-	viewer.removeAllPointClouds();
+    viewer.removeAllPointClouds();
 
-	/*cloud*/
-	viewer.addPointCloud(cloud, "cloud");
-	viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 0.0, "cloud");
-	viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "cloud");
-	/*clusters*/
-	double rgb[3] = {};
-	const int channel = 3;
-	const double step = ceil(pow(clusters.size()+2, 1.0/(double)channel));	//exept (000),(111)
-	const double max = 1.0;
+    /*cloud*/
+    viewer.addPointCloud(cloud, "cloud");
+    viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_COLOR, 0.0, 0.0, 0.0, "cloud");
+    viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, "cloud");
+    /*clusters*/
+    double rgb[3] = {};
+    const int channel = 3;
+    const double step = ceil(pow(clusters.size()+2, 1.0/(double)channel));	//exept (000),(111)
+    const double max = 1.0;
     // std::cout << "cl.size:" << clusters.size() << std::endl;
-	for(size_t i=0;i<clusters.size();i++){
-		std::string name = "cluster_" + std::to_string(i);
-		rgb[0] += 1/step;
-		for(int j=0;j<channel-1;j++){
-			if(rgb[j]>max){
-				rgb[j] -= max + 1/step;
-				rgb[j+1] += 1/step;
-			}
-		}
-    // std::cout << "rgb[0]:" << rgb[0] << std::endl;
-		viewer.addPointCloud(clusters[i], name);
-		viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, rgb[0], rgb[1], rgb[2], name);
-		viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, name);
-	}
+    for(size_t i=0;i<clusters.size();i++){
+        std::string name = "cluster_" + std::to_string(i);
+        rgb[0] += 1/step;
+        for(int j=0;j<channel-1;j++){
+            if(rgb[j]>max){
+                rgb[j] -= max + 1/step;
+                rgb[j+1] += 1/step;
+            }
+        }
+        // std::cout << "rgb[0]:" << rgb[0] << std::endl;
+        viewer.addPointCloud(clusters[i], name);
+        viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, rgb[0], rgb[1], rgb[2], name);
+        viewer.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 2, name);
+    }
 
-	viewer.spinOnce();
+    viewer.spinOnce();
 }
 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "euclidean_clustering");
 
-	EuclideanClustering euclidean_clustering;
+    EuclideanClustering euclidean_clustering;
 
-	ros::spin();
+    ros::spin();
 }
