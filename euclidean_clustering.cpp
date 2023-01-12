@@ -33,7 +33,7 @@ EuclideanClustering::EuclideanClustering()
 {
 	sub_pc = nh.subscribe("/velodyne_obstacles", 1, &EuclideanClustering::CallbackPC, this);
 	viewer.setBackgroundColor(1, 1, 1);
-	viewer.addCoordinateSystem(0.8, "axis");
+	viewer.addCoordinateSystem(1.0, "axis");
 	viewer.setCameraPosition(0.0, 0.0, 35.0, 0.0, 0.0, 0.0);
 
 	nhPrivate.param("cluster_tolerance", cluster_tolerance, 1.0);
@@ -60,16 +60,27 @@ void EuclideanClustering::Clustering(void)
 	double time_start = ros::Time::now().toSec();
 
 	/*clustering*/
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
-	tree->setInputCloud(cloud);
-	std::vector<pcl::PointIndices> cluster_indices;
-	pcl::EuclideanClusterExtraction<pcl::PointXYZ> ece;
-	ece.setClusterTolerance(cluster_tolerance);
-	ece.setMinClusterSize(min_cluster_size);
-	ece.setMaxClusterSize(cloud->points.size());
-	ece.setSearchMethod(tree);
-	ece.setInputCloud(cloud);
-	ece.extract(cluster_indices);
+    /*kd-treeクラスを宣言*/
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
+    /*探索する点群をinput*/
+    tree->setInputCloud(cloud);
+    /*クラスタリング後のインデックスが格納されるベクトル*/
+    std::vector<pcl::PointIndices> cluster_indices;
+    /*今回の主役*/
+    pcl::EuclideanClusterExtraction<pcl::PointXYZ> ece;
+    /*距離の閾値を設定*/
+    ece.setClusterTolerance(cluster_tolerance);
+    /*各クラスタのメンバの最小数を設定*/
+    ece.setMinClusterSize(min_cluster_size);
+    /*各クラスタのメンバの最大数を設定*/
+    ece.setMaxClusterSize(cloud->points.size());
+    /*探索方法を設定*/
+    ece.setSearchMethod(tree);
+    /*クラスリング対象の点群をinput*/
+    ece.setInputCloud(cloud);
+    /*クラスリング実行*/
+    ece.extract(cluster_indices);
+
 
 	std::cout << "cluster_indices.size() = " << cluster_indices.size() << std::endl;
 
@@ -88,6 +99,7 @@ void EuclideanClustering::Clustering(void)
 		clusters.push_back(tmp_clustered_points);
 	}
 
+    int i = 0;
     for(auto it = cluster_indices.begin(); it != cluster_indices.end(); ++it){ // cluster size
         double x_ave, y_ave, z_ave;
         int pt_size = cluster_indices[i].indices.size();
@@ -100,6 +112,7 @@ void EuclideanClustering::Clustering(void)
             y_ave += y;
             z_ave += x;
         }
+        i++;
         x_ave = x_ave / pt_size;
         y_ave = y_ave / pt_size;
         z_ave = z_ave / pt_size;
